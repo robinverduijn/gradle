@@ -51,6 +51,21 @@ public interface PluginDependencySpec {
     PluginDependencySpec version(@Nullable String version);
 
     /**
+     * Specify a path or URL to a script plugin.
+     * <p/>
+     * <pre>
+     * plugins {
+     *     id "org.company.my-script-plugin" from "path/to/script-plugin.gradle"
+     * }
+     * </pre>
+     *
+     * @param path the path or URL
+     * @return this
+     * @since 4.2
+     */
+    PluginDependencySpec from(String path);
+
+    /**
      * Specifies whether the plugin should be applied to the current project. Otherwise it is only put
      * on the project's classpath.
      * <p/>

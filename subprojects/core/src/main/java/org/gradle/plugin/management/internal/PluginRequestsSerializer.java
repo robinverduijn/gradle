@@ -33,11 +33,12 @@ public class PluginRequestsSerializer extends AbstractSerializer<PluginRequests>
         for (int i = 0; i < requestCount; i++) {
             PluginId pluginId = DefaultPluginId.unvalidated(decoder.readString());
             String version = decoder.readNullableString();
+            String from = decoder.readNullableString();
             boolean apply = decoder.readBoolean();
             int lineNumber = decoder.readSmallInt();
             String scriptDisplayName = decoder.readString();
 
-            requests.add(i, new DefaultPluginRequest(pluginId, version, apply, lineNumber, scriptDisplayName, null));
+            requests.add(i, new DefaultPluginRequest(pluginId, version, from, apply, lineNumber, scriptDisplayName, null));
         }
         return new DefaultPluginRequests(requests);
     }
@@ -48,6 +49,7 @@ public class PluginRequestsSerializer extends AbstractSerializer<PluginRequests>
         for (PluginRequestInternal request : requests) {
             encoder.writeString(request.getId().getId());
             encoder.writeNullableString(request.getVersion());
+            encoder.writeNullableString(request.getFrom());
             encoder.writeBoolean(request.isApply());
             encoder.writeSmallInt(request.getLineNumber());
             encoder.writeString(request.getScriptDisplayName());

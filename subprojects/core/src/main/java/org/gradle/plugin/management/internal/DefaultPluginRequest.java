@@ -26,30 +26,32 @@ public class DefaultPluginRequest implements PluginRequestInternal {
 
     private final PluginId id;
     private final String version;
+    private final String from;
     private final boolean apply;
     private final int lineNumber;
     private final String scriptDisplayName;
     private final ModuleVersionSelector artifact;
 
-    public DefaultPluginRequest(String id, String version, boolean apply, int lineNumber, ScriptSource scriptSource) {
-        this(DefaultPluginId.of(id), version, apply, lineNumber, scriptSource);
+    public DefaultPluginRequest(String id, String version, String from, boolean apply, int lineNumber, ScriptSource scriptSource) {
+        this(DefaultPluginId.of(id), version, from, apply, lineNumber, scriptSource);
     }
 
-    public DefaultPluginRequest(PluginId id, String version, boolean apply, int lineNumber, ScriptSource scriptSource) {
-        this(id, version, apply, lineNumber, scriptSource.getDisplayName(), null);
+    public DefaultPluginRequest(PluginId id, String version, String from, boolean apply, int lineNumber, ScriptSource scriptSource) {
+        this(id, version, from, apply, lineNumber, scriptSource.getDisplayName(), null);
     }
 
-    public DefaultPluginRequest(String id, String version, boolean apply, int lineNumber, String scriptDisplayName) {
-        this(DefaultPluginId.of(id), version, apply, lineNumber, scriptDisplayName, null);
+    public DefaultPluginRequest(String id, String version, String from, boolean apply, int lineNumber, String scriptDisplayName) {
+        this(DefaultPluginId.of(id), version, from, apply, lineNumber, scriptDisplayName, null);
     }
 
-    public DefaultPluginRequest(PluginRequestInternal from) {
-        this(from.getId(), from.getVersion(), from.isApply(), from.getLineNumber(), from.getScriptDisplayName(), from.getModule());
+    public DefaultPluginRequest(PluginRequestInternal pluginRequest) {
+        this(pluginRequest.getId(), pluginRequest.getVersion(), pluginRequest.getFrom(), pluginRequest.isApply(), pluginRequest.getLineNumber(), pluginRequest.getScriptDisplayName(), pluginRequest.getModule());
     }
 
-    public DefaultPluginRequest(PluginId id, String version, boolean apply, int lineNumber, String scriptDisplayName, ModuleVersionSelector artifact) {
+    public DefaultPluginRequest(PluginId id, String version, String from, boolean apply, int lineNumber, String scriptDisplayName, ModuleVersionSelector artifact) {
         this.id = id;
         this.version = version;
+        this.from = from;
         this.apply = apply;
         this.lineNumber = lineNumber;
         this.scriptDisplayName = scriptDisplayName;
@@ -63,6 +65,12 @@ public class DefaultPluginRequest implements PluginRequestInternal {
     @Override
     public String getVersion() {
         return version;
+    }
+
+    @Nullable
+    @Override
+    public String getFrom() {
+        return from;
     }
 
     @Nullable
@@ -95,6 +103,9 @@ public class DefaultPluginRequest implements PluginRequestInternal {
         }
         if (artifact != null) {
             b.append(", artifact: '").append(artifact).append("'");
+        }
+        if (from != null) {
+            b.append(", from: '").append(from).append("'");
         }
         if (!apply) {
             b.append(", apply: false");

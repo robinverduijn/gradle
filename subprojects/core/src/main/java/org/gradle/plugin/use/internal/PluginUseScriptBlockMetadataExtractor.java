@@ -125,6 +125,17 @@ public class PluginUseScriptBlockMetadataExtractor {
                                 return;
                             }
                             spec.apply((Boolean) arguments.getValue());
+                        } else if (methodName.getText().equals("from")) {
+                            ConstantExpression arguments = hasSingleConstantArgOfType(call, String.class);
+                            if (arguments == null) {
+                                restrict(call, formatErrorMessage(NEED_SINGLE_STRING));
+                                return;
+                            }
+                            PluginDependencySpec spec = getSpecFor(call);
+                            if (spec == null) {
+                                return;
+                            }
+                            spec.from((String) arguments.getValue());
                         } else {
                             if (!call.isImplicitThis()) {
                                 restrict(methodName, formatErrorMessage(EXTENDED_MESSAGE));

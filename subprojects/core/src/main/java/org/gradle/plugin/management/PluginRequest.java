@@ -43,6 +43,14 @@ public interface PluginRequest {
     String getVersion();
 
     /**
+     * The path or URL to a script plugin.
+     *
+     * @since 4.2
+     */
+    @Nullable
+    String getFrom();
+
+    /**
      * The implementation module of the plugin if one was explicitly specified, otherwise null.
      */
     @Nullable
