@@ -19,9 +19,11 @@ package org.gradle.workers.internal;
 import org.gradle.api.internal.AsmBackedClassGenerator;
 import org.gradle.api.internal.DefaultInstantiatorFactory;
 import org.gradle.api.internal.InstantiatorFactory;
+import org.gradle.api.internal.cache.CrossBuildInMemoryCacheFactory;
+import org.gradle.internal.event.DefaultListenerManager;
 
 public class WorkerServer implements WorkerProtocol<ActionExecutionSpec> {
-    private final InstantiatorFactory instantiatorFactory = new DefaultInstantiatorFactory(new AsmBackedClassGenerator());
+    private final InstantiatorFactory instantiatorFactory = new DefaultInstantiatorFactory(new AsmBackedClassGenerator(), new CrossBuildInMemoryCacheFactory(new DefaultListenerManager()));
 
     @Override
     public DefaultWorkResult execute(ActionExecutionSpec spec) {
