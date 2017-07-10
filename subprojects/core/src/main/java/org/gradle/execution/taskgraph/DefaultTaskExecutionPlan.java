@@ -556,10 +556,6 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
                     return FINISHED;
                 }
 
-                if (allProjectsLocked()) {
-                    return RETRY;
-                }
-
                 try {
                     selected.set(selectNextTask(workerLease));
                 } catch (Throwable t) {
@@ -582,6 +578,10 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
     }
 
     private TaskInfo selectNextTask(final WorkerLease workerLease) {
+        if (allProjectsLocked()) {
+            return null;
+        }
+
         final AtomicReference<TaskInfo> selected = new AtomicReference<TaskInfo>();
         final Iterator<TaskInfo> iterator = executionQueue.iterator();
         while (iterator.hasNext()) {
@@ -596,6 +596,7 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
                             return FAILED;
                         }
 
+                        taskInfo.projectLock = projectLock;
                         selected.set(taskInfo);
                         if (taskInfo.allDependenciesSuccessful()) {
                             recordTaskStarted(taskInfo);
@@ -625,7 +626,7 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
                 taskExecution.execute(selectedTask);
             }
         } finally {
-            coordinationService.withStateLock(unlock(workerLease, getProjectLock(selectedTask)));
+            coordinationService.withStateLock(unlock(workerLease, selectedTask.projectLock));
         }
     }
 

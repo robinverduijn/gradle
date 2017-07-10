@@ -17,6 +17,7 @@
 package org.gradle.execution.taskgraph;
 
 import org.gradle.api.internal.TaskInternal;
+import org.gradle.internal.resources.ResourceLock;
 
 import java.util.TreeSet;
 
@@ -35,6 +36,7 @@ public class TaskInfo implements Comparable<TaskInfo> {
     private final TreeSet<TaskInfo> mustSuccessors = new TreeSet<TaskInfo>();
     private final TreeSet<TaskInfo> shouldSuccessors = new TreeSet<TaskInfo>();
     private final TreeSet<TaskInfo> finalizers = new TreeSet<TaskInfo>();
+    ResourceLock projectLock;
 
     public TaskInfo(TaskInternal task) {
         this.task = task;
