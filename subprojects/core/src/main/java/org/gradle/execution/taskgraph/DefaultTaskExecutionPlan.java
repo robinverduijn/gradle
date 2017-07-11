@@ -24,7 +24,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.gradle.api.Action;
 import org.gradle.api.BuildCancelledException;
 import org.gradle.api.CircularReferenceException;
 import org.gradle.api.Nullable;
@@ -78,10 +77,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.gradle.internal.resources.DefaultResourceLockCoordinationService.unlock;
 import static org.gradle.internal.resources.ResourceLockState.Disposition.*;
 
 /**
@@ -538,50 +535,23 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
         this.failureHandler = handler;
     }
 
+
     @Override
-    public boolean executeWithTask(final WorkerLease workerLease, final Action<TaskInfo> taskExecution) {
-        final AtomicReference<TaskInfo> selected = new AtomicReference<TaskInfo>();
-        final AtomicBoolean workRemaining = new AtomicBoolean();
-        coordinationService.withStateLock(new Transformer<ResourceLockState.Disposition, ResourceLockState>() {
-            @Override
-            public ResourceLockState.Disposition transform(ResourceLockState resourceLockState) {
-                if (cancellationToken.isCancellationRequested()) {
-                    if (abortExecution()) {
-                        tasksCancelled = true;
-                    }
-                }
-
-                workRemaining.set(workRemaining());
-                if (!workRemaining.get()) {
-                    return FINISHED;
-                }
-
-                try {
-                    selected.set(selectNextTask(workerLease));
-                } catch (Throwable t) {
-                    abortAndFail(t);
-                    workRemaining.set(false);
-                }
-
-                if (selected.get() == null && workRemaining.get()) {
-                    return RETRY;
-                } else {
-                    return FINISHED;
-                }
-            }
-        });
-
-
-        TaskInfo selectedTask = selected.get();
-        execute(selectedTask, workerLease, taskExecution);
-        return workRemaining.get();
-    }
-
-    private TaskInfo selectNextTask(final WorkerLease workerLease) {
+    public TaskInfo selectNextTask(final WorkerLease workerLease) {
         if (allProjectsLocked()) {
             return null;
         }
 
+        try {
+            return trySelectNextTask(workerLease);
+        } catch (Throwable t) {
+            abortAndFail(t);
+            throw UncheckedException.throwAsUncheckedException(t);
+        }
+    }
+
+    @Nullable
+    private TaskInfo trySelectNextTask(final WorkerLease workerLease) {
         final AtomicReference<TaskInfo> selected = new AtomicReference<TaskInfo>();
         final Iterator<TaskInfo> iterator = executionQueue.iterator();
         while (iterator.hasNext()) {
@@ -615,19 +585,6 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
             }
         }
         return selected.get();
-    }
-
-    private void execute(TaskInfo selectedTask, WorkerLease workerLease, Action<TaskInfo> taskExecution) {
-        if (selectedTask == null) {
-            return;
-        }
-        try {
-            if (!selectedTask.isComplete()) {
-                taskExecution.execute(selectedTask);
-            }
-        } finally {
-            coordinationService.withStateLock(unlock(workerLease, selectedTask.projectLock));
-        }
     }
 
     private boolean allDependenciesComplete(TaskInfo taskInfo) {
@@ -953,7 +910,14 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
         return true;
     }
 
-    private boolean workRemaining() {
+    @Override
+    public boolean hasWorkRemaining() {
+        if (cancellationToken.isCancellationRequested()) {
+            if (abortExecution()) {
+                tasksCancelled = true;
+            }
+        }
+
         for (TaskInfo taskInfo : executionQueue) {
             if (!taskInfo.isComplete()) {
                 return true;

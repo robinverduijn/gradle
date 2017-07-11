@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import org.gradle.internal.Factory;
 import org.gradle.internal.concurrent.ExecutorFactory;
 import org.gradle.internal.concurrent.ParallelismConfigurationManager;
+import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.work.WorkerLeaseService;
 
 import java.util.List;
@@ -28,11 +29,13 @@ public class TaskPlanExecutorFactory implements Factory<TaskPlanExecutor> {
     private final ParallelismConfigurationManager parallelismConfigurationManager;
     private final ExecutorFactory executorFactory;
     private final WorkerLeaseService workerLeaseService;
+    private final ResourceLockCoordinationService coordinationService;
     private final List<TaskPlanExecutor> taskPlanExecutors = Lists.newArrayList();
 
-    public TaskPlanExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, WorkerLeaseService workerLeaseService) {
+    public TaskPlanExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
         this.parallelismConfigurationManager = parallelismConfigurationManager;
         this.executorFactory = executorFactory;
+        this.coordinationService = coordinationService;
         this.workerLeaseService = workerLeaseService;
     }
 
@@ -43,7 +46,7 @@ public class TaskPlanExecutorFactory implements Factory<TaskPlanExecutor> {
         }
 
         // TODO: Make task plan executor respond to changes in parallelism configuration
-        TaskPlanExecutor taskPlanExecutor = new DefaultTaskPlanExecutor(parallelismConfigurationManager.getParallelismConfiguration(), executorFactory, workerLeaseService);
+        TaskPlanExecutor taskPlanExecutor = new DefaultTaskPlanExecutor(parallelismConfigurationManager.getParallelismConfiguration(), executorFactory, coordinationService, workerLeaseService);
         taskPlanExecutors.add(taskPlanExecutor);
         return taskPlanExecutor;
     }

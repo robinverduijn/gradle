@@ -68,6 +68,7 @@ import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.id.RandomLongIdGenerator;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
+import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
 import org.gradle.internal.serialize.DefaultSerializerRegistry;
 import org.gradle.internal.serialize.SerializerRegistry;
@@ -175,8 +176,8 @@ public class TaskExecutionServices {
     }
 
 
-    TaskPlanExecutor createTaskExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, WorkerLeaseService workerLeaseService) {
-        return new TaskPlanExecutorFactory(parallelismConfigurationManager, executorFactory, workerLeaseService).create();
+    TaskPlanExecutor createTaskExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
+        return new TaskPlanExecutorFactory(parallelismConfigurationManager, executorFactory, coordinationService, workerLeaseService).create();
     }
 
 }
