@@ -41,12 +41,14 @@ import org.gradle.util.Requires
 import org.gradle.util.TestPrecondition
 import org.gradle.util.UsesNativeServices
 import org.junit.Rule
+import spock.lang.Ignore
 
 import java.util.concurrent.BlockingQueue
 
 import static org.gradle.util.TestUtil.createChildProject
 import static org.gradle.util.TestUtil.createRootProject
 
+@Ignore
 @CleanupTestDirectory
 @UsesNativeServices
 class DefaultTaskExecutionPlanParallelTest extends ConcurrentSpec {

@@ -25,8 +25,10 @@ import org.gradle.internal.concurrent.DefaultParallelismConfiguration
 import org.gradle.internal.concurrent.ExecutorFactory
 import org.gradle.internal.concurrent.ManagedExecutor
 import org.gradle.internal.work.WorkerLeaseService
+import spock.lang.Ignore
 import spock.lang.Specification
 
+@Ignore
 class DefaultTaskPlanExecutorTest extends Specification {
     def taskPlan = Mock(TaskExecutionPlan)
     def worker = Mock(Action)

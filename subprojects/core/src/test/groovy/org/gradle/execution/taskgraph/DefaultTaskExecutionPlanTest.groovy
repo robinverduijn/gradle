@@ -16,7 +16,6 @@
 
 package org.gradle.execution.taskgraph
 
-import org.gradle.api.Action
 import org.gradle.api.BuildCancelledException
 import org.gradle.api.CircularReferenceException
 import org.gradle.api.Task
@@ -892,17 +891,22 @@ class DefaultTaskExecutionPlanTest extends AbstractProjectBuilderSpec {
 
     def getExecutedTasks() {
         def tasks = []
-        def moreTasks = true
-        while (moreTasks) {
-            moreTasks = executionPlan.executeWithTask(workerLease, new Action<TaskInfo>() {
-                @Override
-                void execute(TaskInfo taskInfo) {
-                    tasks << taskInfo.task
-                    executionPlan.taskComplete(taskInfo)
-                }
-            })
+        def taskInfo = getNextTask()
+        while (taskInfo != null) {
+            if (taskInfo.state == TaskInfo.TaskExecutionState.EXECUTING) {
+                tasks << taskInfo.task
+                executionPlan.taskComplete(taskInfo)
+            }
+            taskInfo = getNextTask()
         }
         return tasks
+    }
+
+    def getNextTask() {
+        if (executionPlan.hasWorkRemaining()) {
+            return executionPlan.selectNextTask(workerLease)
+        }
+        return null
     }
 
     private TaskDependency taskDependencyResolvingTo(TaskInternal task, List<Task> tasks) {
