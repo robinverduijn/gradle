@@ -22,8 +22,9 @@ import org.gradle.api.internal.TaskInternal;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.internal.concurrent.ExecutorFactory;
-import org.gradle.internal.concurrent.ParallelismConfiguration;
 import org.gradle.internal.concurrent.ManagedExecutor;
+import org.gradle.internal.concurrent.ParallelismConfiguration;
+import org.gradle.internal.concurrent.Stoppable;
 import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.resources.ResourceLockState;
 import org.gradle.internal.time.Timer;
@@ -41,12 +42,15 @@ import static org.gradle.internal.resources.ResourceLockState.Disposition.FINISH
 import static org.gradle.internal.resources.ResourceLockState.Disposition.RETRY;
 import static org.gradle.internal.time.Clock.prettyTime;
 
-class DefaultTaskPlanExecutor implements TaskPlanExecutor {
+class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
     private static final Logger LOGGER = Logging.getLogger(DefaultTaskPlanExecutor.class);
     private final int executorCount;
     private final ExecutorFactory executorFactory;
     private final ResourceLockCoordinationService coordinationService;
     private final WorkerLeaseService workerLeaseService;
+    private ManagedExecutor executor;
+    private TaskExecutionPlan taskExecutionPlan;
+    private Action<? super TaskInternal> taskWorker;
 
     public DefaultTaskPlanExecutor(ParallelismConfiguration parallelismConfiguration, ExecutorFactory executorFactory,
                                    ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
@@ -61,23 +65,38 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor {
         this.workerLeaseService = workerLeaseService;
     }
 
-    @Override
-    public void process(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker) {
-        ManagedExecutor executor = executorFactory.create("Task worker for '" + taskExecutionPlan.getDisplayName() + "'");
-        try {
+    private void start() {
+        if (executor == null) {
+            executor = executorFactory.create("Task worker for 'gradle - all'");
             WorkerLease parentWorkerLease = workerLeaseService.getCurrentWorkerLease();
-            startAdditionalWorkers(taskExecutionPlan, taskWorker, executor, parentWorkerLease);
-            taskWorker(taskExecutionPlan, taskWorker, parentWorkerLease).run();
-            taskExecutionPlan.awaitCompletion();
-        } finally {
-            executor.stop();
+            startWorkers(executor, parentWorkerLease);
         }
     }
 
-    private void startAdditionalWorkers(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker, Executor executor, WorkerLease parentWorkerLease) {
+    @Override
+    public void stop() {
+        if (executor != null) {
+            executor.stop();
+            executor = null;
+        }
+    }
+
+    @Override
+    public void process(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker) {
+        this.taskExecutionPlan = taskExecutionPlan;
+        this.taskWorker = taskWorker;
+        start();
+        try {
+            taskExecutionPlan.awaitCompletion();
+        } finally {
+            stop();
+        }
+    }
+
+    private void startWorkers(Executor executor, WorkerLease parentWorkerLease) {
         LOGGER.debug("Using {} parallel executor threads", executorCount);
 
-        for (int i = 1; i < executorCount; i++) {
+        for (int i = 0; i < executorCount; i++) {
             Runnable worker = taskWorker(taskExecutionPlan, taskWorker, parentWorkerLease);
             executor.execute(worker);
         }
