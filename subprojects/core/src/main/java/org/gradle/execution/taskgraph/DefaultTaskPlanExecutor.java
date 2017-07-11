@@ -16,6 +16,7 @@
 
 package org.gradle.execution.taskgraph;
 
+import com.google.common.collect.Maps;
 import org.gradle.api.Action;
 import org.gradle.api.Transformer;
 import org.gradle.api.internal.TaskInternal;
@@ -32,6 +33,7 @@ import org.gradle.internal.time.Timers;
 import org.gradle.internal.work.WorkerLeaseRegistry.WorkerLease;
 import org.gradle.internal.work.WorkerLeaseService;
 
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -49,8 +51,7 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
     private final ResourceLockCoordinationService coordinationService;
     private final WorkerLeaseService workerLeaseService;
     private ManagedExecutor executor;
-    private TaskExecutionPlan taskExecutionPlan;
-    private Action<? super TaskInternal> taskWorker;
+    private final Map<TaskExecutionPlan, Action<? super TaskInternal>> taskExecutionPlans = Maps.newLinkedHashMap();
 
     public DefaultTaskPlanExecutor(ParallelismConfiguration parallelismConfiguration, ExecutorFactory executorFactory,
                                    ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
@@ -83,11 +84,12 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
 
     @Override
     public void process(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker) {
-        this.taskExecutionPlan = taskExecutionPlan;
-        this.taskWorker = taskWorker;
+        taskExecutionPlans.put(taskExecutionPlan, taskWorker);
         start();
         try {
+            System.out.println("Awaiting completion");
             taskExecutionPlan.awaitCompletion();
+            System.out.println("Awaited");
         } finally {
             stop();
         }
@@ -97,29 +99,26 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
         LOGGER.debug("Using {} parallel executor threads", executorCount);
 
         for (int i = 0; i < executorCount; i++) {
-            Runnable worker = taskWorker(taskExecutionPlan, taskWorker, parentWorkerLease);
+            Runnable worker = taskWorker(parentWorkerLease);
             executor.execute(worker);
         }
     }
 
-    private Runnable taskWorker(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker, WorkerLease parentWorkerLease) {
-        return new TaskExecutorWorker(taskExecutionPlan, taskWorker, parentWorkerLease);
+    private Runnable taskWorker(WorkerLease parentWorkerLease) {
+        return new TaskExecutorWorker(parentWorkerLease);
     }
 
     private class TaskExecutorWorker implements Runnable {
-        private final TaskExecutionPlan taskExecutionPlan;
-        private final Action<? super TaskInternal> taskWorker;
         private final WorkerLease parentWorkerLease;
         final AtomicLong busy = new AtomicLong(0);
 
-        private TaskExecutorWorker(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker, WorkerLease parentWorkerLease) {
-            this.taskExecutionPlan = taskExecutionPlan;
-            this.taskWorker = taskWorker;
+        private TaskExecutorWorker(WorkerLease parentWorkerLease) {
             this.parentWorkerLease = parentWorkerLease;
         }
 
         public void run() {
             Timer totalTimer = Timers.startTimer();
+            System.out.printf("Task worker [%s] started", Thread.currentThread());
 
             WorkerLease childLease = parentWorkerLease.createChild();
             boolean moreTasksToExecute = true;
@@ -132,57 +131,68 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Task worker [{}] finished, busy: {}, idle: {}", Thread.currentThread(), prettyTime(busy.get()), prettyTime(total - busy.get()));
             }
+            System.out.printf("Task worker [%s] finished, busy: %s, idle: %s", Thread.currentThread(), prettyTime(busy.get()), prettyTime(total - busy.get()));
         }
 
         private boolean executeWithTask(final WorkerLease workerLease) {
-            final AtomicReference<TaskInfo> selected = new AtomicReference<TaskInfo>();
+            final AtomicReference<TaskInfo> taskInfo = new AtomicReference<TaskInfo>();
+            final AtomicReference<TaskExecution> selected = new AtomicReference<TaskExecution>();
             final AtomicBoolean workRemaining = new AtomicBoolean();
             coordinationService.withStateLock(new Transformer<ResourceLockState.Disposition, ResourceLockState>() {
                 @Override
                 public ResourceLockState.Disposition transform(ResourceLockState resourceLockState) {
-                    workRemaining.set(taskExecutionPlan.hasWorkRemaining());
-                    if (!workRemaining.get()) {
-                        return FINISHED;
+                    workRemaining.set(false);
+                    for (TaskExecutionPlan taskExecutionPlan : taskExecutionPlans.keySet()) {
+                        workRemaining.compareAndSet(false, taskExecutionPlan.hasWorkRemaining());
+                        if (workRemaining.get()) {
+                            try {
+                                taskInfo.set(taskExecutionPlan.selectNextTask(workerLease));
+                            } catch (Throwable t) {
+                                workRemaining.set(false);
+                                return FINISHED;
+                            }
+                            if (taskInfo.get() != null) {
+                                TaskExecution taskExecution = new TaskExecution();
+                                taskExecution.taskInfo = taskInfo.get();
+                                taskExecution.plan = taskExecutionPlan;
+                                taskExecution.worker = taskExecutionPlans.get(taskExecutionPlan);
+                                selected.set(taskExecution);
+                                return FINISHED;
+                            }
+                        }
                     }
-
-                    try {
-                        selected.set(taskExecutionPlan.selectNextTask(workerLease));
-                    } catch (Throwable t) {
-                        workRemaining.set(false);
-                    }
-
-                    if (selected.get() == null && workRemaining.get()) {
+                    if (workRemaining.get()) {
                         return RETRY;
-                    } else {
-                        return FINISHED;
                     }
+                    return FINISHED;
                 }
             });
 
-
-            TaskInfo selectedTask = selected.get();
+            TaskExecution selectedTask = selected.get();
             execute(selectedTask, workerLease);
             return workRemaining.get();
         }
 
-        private void execute(TaskInfo selectedTask, WorkerLease workerLease) {
+        private void execute(TaskExecution selectedTask, WorkerLease workerLease) {
             if (selectedTask == null) {
                 return;
             }
+            TaskInfo taskInfo = selectedTask.taskInfo;
             try {
-                if (!selectedTask.isComplete()) {
+                if (!taskInfo.isComplete()) {
                     executeTask(selectedTask);
                 }
             } finally {
-                coordinationService.withStateLock(unlock(workerLease, selectedTask.projectLock));
+                coordinationService.withStateLock(unlock(workerLease, taskInfo.projectLock));
             }
         }
 
-        private void executeTask(TaskInfo task) {
+        private void executeTask(TaskExecution taskExecution) {
+            TaskInfo task = taskExecution.taskInfo;
             final String taskPath = task.getTask().getPath();
             LOGGER.info("{} ({}) started.", taskPath, Thread.currentThread());
             final Timer taskTimer = Timers.startTimer();
-            processTask(task);
+            processTask(taskExecution);
             long taskDuration = taskTimer.getElapsedMillis();
             busy.addAndGet(taskDuration);
             if (LOGGER.isInfoEnabled()) {
@@ -190,14 +200,21 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
             }
         }
 
-        private void processTask(TaskInfo taskInfo) {
+        private void processTask(TaskExecution taskExecution) {
+            TaskInfo taskInfo = taskExecution.taskInfo;
             try {
-                taskWorker.execute(taskInfo.getTask());
+                taskExecution.worker.execute(taskInfo.getTask());
             } catch (Throwable e) {
                 taskInfo.setExecutionFailure(e);
             } finally {
-                taskExecutionPlan.taskComplete(taskInfo);
+                taskExecution.plan.taskComplete(taskInfo);
             }
         }
+    }
+
+    private static class TaskExecution {
+        public TaskExecutionPlan plan;
+        public Action<? super TaskInternal> worker;
+        public TaskInfo taskInfo;
     }
 }

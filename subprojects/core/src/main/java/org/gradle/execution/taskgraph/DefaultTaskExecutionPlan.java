@@ -877,9 +877,11 @@ public class DefaultTaskExecutionPlan implements TaskExecutionPlan {
             @Override
             public ResourceLockState.Disposition transform(ResourceLockState resourceLockState) {
                 if (allTasksComplete()) {
+                    System.out.println("All complete: FINISHED : " + gradle.getIdentityPath());
                     rethrowFailures();
                     return FINISHED;
                 } else {
+                    System.out.println("Not yet complete: RETRY : " + gradle.getIdentityPath());
                     return RETRY;
                 }
             }
