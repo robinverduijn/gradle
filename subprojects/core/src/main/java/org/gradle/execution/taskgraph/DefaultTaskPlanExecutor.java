@@ -66,12 +66,14 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
         this.workerLeaseService = workerLeaseService;
     }
 
-    private void start() {
+    private boolean start() {
         if (executor == null) {
             executor = executorFactory.create("Task worker for 'gradle - all'");
             WorkerLease parentWorkerLease = workerLeaseService.getCurrentWorkerLease();
             startWorkers(executor, parentWorkerLease);
+            return true;
         }
+        return false;
     }
 
     @Override
@@ -85,13 +87,16 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
     @Override
     public void process(TaskExecutionPlan taskExecutionPlan, Action<? super TaskInternal> taskWorker) {
         taskExecutionPlans.put(taskExecutionPlan, taskWorker);
-        start();
+        boolean started = start();
+
         try {
             System.out.println("Awaiting completion");
             taskExecutionPlan.awaitCompletion();
             System.out.println("Awaited");
         } finally {
-            stop();
+            if (started) {
+                stop();
+            }
         }
     }
 
@@ -119,6 +124,7 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
         public void run() {
             Timer totalTimer = Timers.startTimer();
             System.out.printf("Task worker [%s] started", Thread.currentThread());
+            System.out.println();
 
             WorkerLease childLease = parentWorkerLease.createChild();
             boolean moreTasksToExecute = true;
@@ -132,6 +138,7 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor, Stoppable {
                 LOGGER.debug("Task worker [{}] finished, busy: {}, idle: {}", Thread.currentThread(), prettyTime(busy.get()), prettyTime(total - busy.get()));
             }
             System.out.printf("Task worker [%s] finished, busy: %s, idle: %s", Thread.currentThread(), prettyTime(busy.get()), prettyTime(total - busy.get()));
+            System.out.println();
         }
 
         private boolean executeWithTask(final WorkerLease workerLease) {

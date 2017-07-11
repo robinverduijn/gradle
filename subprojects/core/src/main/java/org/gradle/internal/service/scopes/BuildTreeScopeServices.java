@@ -20,13 +20,19 @@ import org.gradle.api.Action;
 import org.gradle.api.internal.ExceptionAnalyser;
 import org.gradle.api.logging.configuration.LoggingConfiguration;
 import org.gradle.api.logging.configuration.ShowStacktrace;
+import org.gradle.execution.taskgraph.TaskPlanExecutor;
+import org.gradle.execution.taskgraph.TaskPlanExecutorFactory;
 import org.gradle.initialization.DefaultExceptionAnalyser;
 import org.gradle.initialization.MultipleBuildFailuresExceptionAnalyser;
 import org.gradle.initialization.StackTraceSanitizingExceptionAnalyser;
+import org.gradle.internal.concurrent.ExecutorFactory;
+import org.gradle.internal.concurrent.ParallelismConfigurationManager;
 import org.gradle.internal.event.ListenerManager;
+import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.service.DefaultServiceRegistry;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
+import org.gradle.internal.work.WorkerLeaseService;
 
 /**
  * Contains the singleton services for a single build tree which consists of one or more builds.
@@ -50,4 +56,10 @@ public class BuildTreeScopeServices extends DefaultServiceRegistry {
         }
         return exceptionAnalyser;
     }
+
+
+    TaskPlanExecutor createTaskExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
+        return new TaskPlanExecutorFactory(parallelismConfigurationManager, executorFactory, coordinationService, workerLeaseService).create();
+    }
+
 }

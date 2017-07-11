@@ -58,24 +58,18 @@ import org.gradle.caching.internal.controller.BuildCacheController;
 import org.gradle.caching.internal.tasks.BuildCacheTaskServices;
 import org.gradle.caching.internal.tasks.TaskCacheKeyCalculator;
 import org.gradle.caching.internal.tasks.TaskOutputCacheCommandFactory;
-import org.gradle.execution.taskgraph.TaskPlanExecutor;
-import org.gradle.execution.taskgraph.TaskPlanExecutorFactory;
 import org.gradle.internal.classloader.ClassLoaderHierarchyHasher;
-import org.gradle.internal.concurrent.ExecutorFactory;
-import org.gradle.internal.concurrent.ParallelismConfigurationManager;
 import org.gradle.internal.environment.GradleBuildEnvironment;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.id.RandomLongIdGenerator;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.reflect.Instantiator;
-import org.gradle.internal.resources.ResourceLockCoordinationService;
 import org.gradle.internal.scopeids.id.BuildInvocationScopeId;
 import org.gradle.internal.serialize.DefaultSerializerRegistry;
 import org.gradle.internal.serialize.SerializerRegistry;
 import org.gradle.internal.service.ServiceRegistration;
 import org.gradle.internal.service.ServiceRegistry;
 import org.gradle.internal.work.AsyncWorkTracker;
-import org.gradle.internal.work.WorkerLeaseService;
 
 import java.util.List;
 
@@ -173,11 +167,6 @@ public class TaskExecutionServices {
                 valueSnapshotter
             )
         );
-    }
-
-
-    TaskPlanExecutor createTaskExecutorFactory(ParallelismConfigurationManager parallelismConfigurationManager, ExecutorFactory executorFactory, ResourceLockCoordinationService coordinationService, WorkerLeaseService workerLeaseService) {
-        return new TaskPlanExecutorFactory(parallelismConfigurationManager, executorFactory, coordinationService, workerLeaseService).create();
     }
 
 }
