@@ -115,16 +115,6 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor {
             }
         }
 
-        private void processTask(TaskInfo taskInfo) {
-            try {
-                taskWorker.execute(taskInfo.getTask());
-            } catch (Throwable e) {
-                taskInfo.setExecutionFailure(e);
-            } finally {
-                taskExecutionPlan.taskComplete(taskInfo);
-            }
-        }
-
         private boolean executeWithTask(final WorkerLease workerLease) {
             final AtomicReference<TaskInfo> selected = new AtomicReference<TaskInfo>();
             final AtomicBoolean workRemaining = new AtomicBoolean();
@@ -178,6 +168,16 @@ class DefaultTaskPlanExecutor implements TaskPlanExecutor {
             busy.addAndGet(taskDuration);
             if (LOGGER.isInfoEnabled()) {
                 LOGGER.info("{} ({}) completed. Took {}.", taskPath, Thread.currentThread(), prettyTime(taskDuration));
+            }
+        }
+
+        private void processTask(TaskInfo taskInfo) {
+            try {
+                taskWorker.execute(taskInfo.getTask());
+            } catch (Throwable e) {
+                taskInfo.setExecutionFailure(e);
+            } finally {
+                taskExecutionPlan.taskComplete(taskInfo);
             }
         }
     }
