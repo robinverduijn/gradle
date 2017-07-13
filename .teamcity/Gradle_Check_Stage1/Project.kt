@@ -1,7 +1,8 @@
 package Gradle_Check_Stage1
 
-import Gradle_Check_Stage1.buildTypes.*
-import jetbrains.buildServer.configs.kotlin.v10.*
+import Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_BuildDistributions
+import Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_Passes
+import Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_SanityCheck
 import jetbrains.buildServer.configs.kotlin.v10.Project
 
 object Project : Project({
@@ -14,4 +15,13 @@ object Project : Project({
     buildType(Gradle_Check_Stage1_BuildDistributions)
     buildType(Gradle_Check_Stage1_SanityCheck)
     buildTypesOrder = arrayListOf(Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_Passes, Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_SanityCheck, Gradle_Check_Stage1.buildTypes.Gradle_Check_Stage1_BuildDistributions)
+
+    features {
+        feature {
+            type = "ReportTab"
+            param("startPage", "reports/subprojects/distributions/build/reports/binary-compatibility/report.html")
+            param("title", "Compatibility report")
+            param("type", "BuildReportTab")
+        }
+    }
 })
