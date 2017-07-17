@@ -122,7 +122,7 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
         buildOpIdHierarchy.remove(buildOpId);
         OperationGroup group = operationsInProgress.remove(buildOpId);
         if (group != null) {
-            group.setStatus(completeEvent.getStatus());
+            group.setStatus(completeEvent.getStatus(), completeEvent.isFailed());
             group.flushOutput();
         }
     }
@@ -177,6 +177,7 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
         private final BuildOperationCategory buildOperationCategory;
 
         private String status = "";
+        private boolean failing = false;
 
         private List<RenderableOutputEvent> bufferedLogs = new ArrayList<RenderableOutputEvent>();
 
@@ -192,7 +193,7 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
         }
 
         private StyledTextOutputEvent header() {
-            return new StyledTextOutputEvent(lastUpdateTime, category, null, buildOpIdentifier, headerFormatter.format(loggingHeader, description, shortDescription, status));
+            return new StyledTextOutputEvent(lastUpdateTime, category, null, buildOpIdentifier, headerFormatter.format(loggingHeader, description, shortDescription, status, failing));
         }
 
         private void bufferOutput(RenderableOutputEvent output) {
@@ -227,8 +228,9 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
             }
         }
 
-        private void setStatus(String status) {
+        private void setStatus(String status, boolean failing) {
             this.status = status;
+            this.failing = failing;
         }
 
         private boolean shouldForward() {

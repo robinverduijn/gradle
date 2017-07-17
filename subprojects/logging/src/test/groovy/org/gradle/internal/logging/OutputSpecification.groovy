@@ -106,10 +106,10 @@ abstract class OutputSpecification extends Specification {
 
     ProgressCompleteEvent complete(String status) {
         long id = counter--
-        return new ProgressCompleteEvent(new OperationIdentifier(id), tenAm, status)
+        return new ProgressCompleteEvent(new OperationIdentifier(id), tenAm, status, false)
     }
 
     ProgressCompleteEvent complete(Long id, status='STATUS') {
-        new ProgressCompleteEvent(new OperationIdentifier(id), tenAm, status)
+        new ProgressCompleteEvent(new OperationIdentifier(id), tenAm, status, false)
     }
 }

@@ -156,10 +156,14 @@ public class DefaultProgressLoggerFactory implements ProgressLoggerFactory {
         }
 
         public void completed(String status) {
+            completed(status, false);
+        }
+
+        public void completed(String status, boolean failed) {
             assertRunning();
             state = State.completed;
             current.set(parent);
-            listener.completed(new ProgressCompleteEvent(progressOperationId, timeProvider.getCurrentTime(), toStatus(status)));
+            listener.completed(new ProgressCompleteEvent(progressOperationId, timeProvider.getCurrentTime(), toStatus(status), failed));
         }
 
         private String toStatus(String status) {

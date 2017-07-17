@@ -74,5 +74,6 @@ class NoOpProgressLoggerFactory implements ProgressLoggerFactory {
         void progress(String status) {}
         void completed() {}
         void completed(String status) {}
+        void completed(String status, boolean failed) {}
     }
 }
