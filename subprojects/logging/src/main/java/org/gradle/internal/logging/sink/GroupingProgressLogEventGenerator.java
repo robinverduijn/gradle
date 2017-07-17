@@ -177,7 +177,7 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
         private final BuildOperationCategory buildOperationCategory;
 
         private String status = "";
-        private boolean failing = false;
+        private boolean failed;
 
         private List<RenderableOutputEvent> bufferedLogs = new ArrayList<RenderableOutputEvent>();
 
@@ -193,7 +193,7 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
         }
 
         private StyledTextOutputEvent header() {
-            return new StyledTextOutputEvent(lastUpdateTime, category, null, buildOpIdentifier, headerFormatter.format(loggingHeader, description, shortDescription, status, failing));
+            return new StyledTextOutputEvent(lastUpdateTime, category, null, buildOpIdentifier, headerFormatter.format(loggingHeader, description, shortDescription, status, failed));
         }
 
         private void bufferOutput(RenderableOutputEvent output) {
@@ -228,9 +228,9 @@ public class GroupingProgressLogEventGenerator extends BatchOutputEventListener 
             }
         }
 
-        private void setStatus(String status, boolean failing) {
+        private void setStatus(String status, boolean failed) {
             this.status = status;
-            this.failing = failing;
+            this.failed = failed;
         }
 
         private boolean shouldForward() {
