@@ -539,6 +539,7 @@ We would like to thank the following community members for making contributions 
 - [Eitan Adler](https://github.com/grimreaper) - Remove some some duplicated words from documentation ([gradle/gradle#1513](https://github.com/gradle/gradle/pull/1513))
 - [Eitan Adler](https://github.com/grimreaper) - Remove extraneous letter in documentation ([gradle/gradle#1459](https://github.com/gradle/gradle/pull/1459))
 - [Robert Hencke](https://github.com/rhencke) - Add `@DelegatesTo` and `@ClosureParams` to `Project` ([gradle/gradle#930](https://github.com/gradle/gradle/pull/930))
+- [Bo Zhang](https://github.com/blindpirate) - Fix `StringIndexOutOfBoundsException` on Windows (#2291)
 
 We love getting contributions from the Gradle community. For information on contributing, please see [gradle.org/contribute](https://gradle.org/contribute).
 
