@@ -68,6 +68,8 @@ public class BuildProgressFilter implements RootBuildLifecycleListener, BuildLis
     public void graphPopulated(TaskExecutionGraph graph) {
         if (gradle != null && graph == gradle.getTaskGraph()) {
             logger.graphPopulated(graph.getAllTasks().size());
+        } else {
+            logger.nestedTaskGraphPopulated(graph.getAllTasks().size());
         }
     }
 
@@ -99,6 +101,8 @@ public class BuildProgressFilter implements RootBuildLifecycleListener, BuildLis
     public void afterExecute(Task task, TaskState state) {
         if (task.getProject().getGradle() == gradle) {
             logger.afterExecute(state.getFailure() != null);
+        } else {
+            logger.afterNestedExecute(state.getFailure() != null);
         }
     }
 
