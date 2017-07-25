@@ -17,11 +17,13 @@ package org.gradle.initialization;
 
 import org.gradle.api.internal.GradleInternal;
 import org.gradle.configuration.InitScriptProcessor;
-import org.gradle.groovy.scripts.UriScriptSource;
+import org.gradle.groovy.scripts.TextResourceScriptSource;
 import org.gradle.internal.operations.BuildOperationContext;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.RunnableBuildOperation;
 import org.gradle.internal.progress.BuildOperationDescriptor;
+import org.gradle.internal.resource.TextResource;
+import org.gradle.internal.resource.TextResourceLoader;
 
 import java.io.File;
 import java.util.List;
@@ -48,7 +50,8 @@ public class InitScriptHandler {
             @Override
             public void run(BuildOperationContext context) {
                 for (File script : initScripts) {
-                    processor.process(UriScriptSource.file("initialization script", script), gradle);
+                    TextResource resource = TextResourceLoader.forFile("initialization script", script);
+                    processor.process(new TextResourceScriptSource(resource), gradle);
                 }
             }
 

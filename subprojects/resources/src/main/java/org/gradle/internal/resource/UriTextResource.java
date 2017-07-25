@@ -265,7 +265,6 @@ public class UriTextResource implements TextResource {
             return sourceFile;
         }
 
-        @Nullable
         @Override
         public URI getURI() {
             return sourceUri;

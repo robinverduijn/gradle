@@ -15,16 +15,19 @@
  */
 package org.gradle.internal.resource;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.net.URI;
 
 public class TextResourceLoader {
-    public static TextResource forFile(String description, File sourceFile) {
+    public static TextResource forFile(String description, @Nullable File sourceFile) {
+        if (sourceFile == null) {
+            return new StringTextResource(description, "");
+        }
         if (sourceFile.exists()) {
             return new UriTextResource(description, sourceFile);
-        } else {
-            return new EmptyFileTextResource(description, sourceFile);
         }
+        return new EmptyFileTextResource(description, sourceFile);
     }
 
     public static TextResource forUri(String description, URI uri) {

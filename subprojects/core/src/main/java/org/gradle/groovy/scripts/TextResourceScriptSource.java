@@ -18,9 +18,7 @@ package org.gradle.groovy.scripts;
 import org.gradle.internal.hash.HashUtil;
 import org.gradle.internal.resource.ResourceLocation;
 import org.gradle.internal.resource.TextResource;
-import org.gradle.internal.resource.TextResourceLoader;
 
-import java.io.File;
 import java.net.URI;
 
 import static java.lang.Character.isJavaIdentifierPart;
@@ -31,19 +29,11 @@ import static org.apache.commons.lang.StringUtils.substringBeforeLast;
 /**
  * A {@link ScriptSource} which loads the script from a URI.
  */
-public class UriScriptSource implements ScriptSource {
+public class TextResourceScriptSource implements ScriptSource {
     private final TextResource resource;
     private String className;
 
-    public static ScriptSource file(String description, File sourceFile) {
-        return new UriScriptSource(TextResourceLoader.forFile(description, sourceFile));
-    }
-
-    public static ScriptSource uri(String description, URI source) {
-        return new UriScriptSource(TextResourceLoader.forUri(description, source));
-    }
-
-    private UriScriptSource(TextResource resource) {
+    public TextResourceScriptSource(TextResource resource) {
         this.resource = resource;
     }
 
@@ -53,9 +43,13 @@ public class UriScriptSource implements ScriptSource {
 
     public String getFileName() {
         ResourceLocation location = resource.getLocation();
-        File sourceFile = location.getFile();
-        URI sourceUri = location.getURI();
-        return sourceFile != null ? sourceFile.getPath() : sourceUri.toString();
+        if (location.getFile() != null) {
+            return location.getFile().getPath();
+        }
+        if (location.getURI() != null) {
+            return location.getURI().toString();
+        }
+        return getClassName();
     }
 
     public String getDisplayName() {
@@ -68,11 +62,19 @@ public class UriScriptSource implements ScriptSource {
      */
     public String getClassName() {
         if (className == null) {
-            URI sourceUri = getResource().getLocation().getURI();
-            String path = sourceUri.toString();
-            this.className = classNameFromPath(path);
+            this.className = initClassName();
         }
         return className;
+    }
+
+    private String initClassName() {
+        URI sourceUri = getResource().getLocation().getURI();
+        if (sourceUri != null) {
+            String path = sourceUri.toString();
+            return classNameFromPath(path);
+        }
+
+        return "script_" + HashUtil.createCompactMD5(resource.getText());
     }
 
     private String classNameFromPath(String path) {
