@@ -16,10 +16,9 @@
 package org.gradle.groovy.scripts;
 
 import org.gradle.internal.hash.HashUtil;
-import org.gradle.internal.resource.EmptyFileTextResource;
-import org.gradle.internal.resource.TextResource;
 import org.gradle.internal.resource.ResourceLocation;
-import org.gradle.internal.resource.UriTextResource;
+import org.gradle.internal.resource.TextResource;
+import org.gradle.internal.resource.TextResourceLoader;
 
 import java.io.File;
 import java.net.URI;
@@ -37,20 +36,14 @@ public class UriScriptSource implements ScriptSource {
     private String className;
 
     public static ScriptSource file(String description, File sourceFile) {
-        UriTextResource resource;
-        if (sourceFile.exists()) {
-            resource = new UriTextResource(description, sourceFile);
-        } else {
-            resource = new EmptyFileTextResource(description, sourceFile);
-        }
-        return new UriScriptSource(resource);
+        return new UriScriptSource(TextResourceLoader.forFile(description, sourceFile));
     }
 
     public static ScriptSource uri(String description, URI source) {
-        return new UriScriptSource(new UriTextResource(description, source));
+        return new UriScriptSource(TextResourceLoader.forUri(description, source));
     }
 
-    private UriScriptSource(UriTextResource resource) {
+    private UriScriptSource(TextResource resource) {
         this.resource = resource;
     }
 
