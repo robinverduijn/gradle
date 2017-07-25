@@ -84,6 +84,11 @@ test {
     forkEvery = 200
 }
 
+jmh {
+    fork = 1
+    resultFormat = 'CSV'
+}
+
 [compileGroovy, compileTestGroovy]*.groovyOptions*.fork(memoryInitialSize: '128M', memoryMaximumSize: '1G')
 
 task pluginsManifest(type: WriteProperties) {
